@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>班级考勤助手 - 支持备份恢复</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #f5f7fb;
+            margin: 0;
+            padding: 0 0 80px 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+        .tabs {
+            display: flex;
+            background: white;
+            border-radius: 30px;
+            margin: 16px 16px 0 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: white;
+        }
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 14px 0;
+            font-weight: 600;
+            font-size: 16px;
+            color: #7f8c8d;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 30px;
+        }
+        .tab.active {
+            background: #2c3e50;
+            color: white;
+        }
+        .page {
+            display: none;
+            margin-top: 16px;
+        }
+        .page.active-page {
+            display: block;
+        }
+        .card {
+            background: white;
+            border-radius: 24px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 16px;
+            border-left: 5px solid #2c3e50;
+            padding-left: 12px;
+        }
+        input, select, textarea, button {
+            font-size: 16px;
+            border-radius: 16px;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            width: 100%;
+            margin-bottom: 12px;
+            font-family: inherit;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+        button {
+            background: #2c3e50;
+            color: white;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:active {
+            opacity: 0.7;
+        }
+        button.secondary {
+            background: #e2e8f0;
+            color: #2c3e50;
+        }
+        button.small-btn {
+            padding: 6px 12px;
+            font-size: 13px;
+            width: auto;
+            margin-bottom: 0;
+            border-radius: 20px;
+        }
+        .student-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #edf2f7;
+        }
+        .student-info {
+            flex: 1;
+        }
+        .student-name {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .inline-picker {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin: 12px 0;
+        }
+        .inline-picker select {
+            flex: 2;
+            margin-bottom: 0;
+        }
+        .inline-picker button {
+            flex: 1;
+            margin-bottom: 0;
+        }
+        .search-box {
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #f8fafc;
+            border-radius: 20px;
+            margin-top: 16px;
+            padding: 12px;
+        }
+        .month-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 16px 0 8px 0;
+            color: #2c3e50;
+        }
+        .stat-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        .stat-badge {
+            background: white;
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 14px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .empty-msg {
+            text-align: center;
+            color: #94a3b8;
+            padding: 40px 0;
+        }
+        .batch-hint {
+            font-size: 13px;
+            color: #718096;
+            margin: -8px 0 12px 0;
+        }
+        .backup-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .backup-buttons button {
+            flex: 1;
+            background: #27ae60;
+        }
+        .backup-buttons button.import-btn {
+            background: #e67e22;
+        }
+        footer {
+            text-align: center;
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 24px;
+        }
+        .modal-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-container {
+            background: white;
+            border-radius: 32px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        .modal-header {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            padding: 0;
+            width: auto;
+            color: #94a3b8;
+        }
+        .record-item {
+            border-bottom: 1px solid #e9ecef;
+            padding: 12px 0;
+        }
+        .record-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .record-actions button {
+            margin-left: 6px;
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+        .add-record-form {
+            margin-top: 20px;
+            padding-top: 12px;
+            border-top: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="tabs">
+        <div class="tab active" data-tab="index">📝 每日登记</div>
+        <div class="tab" data-tab="statistics">📊 统计报表</div>
+        <div class="tab" data-tab="manage">👥 班级管理</div>
+    </div>
+
+    <!-- 每日登记 -->
+    <div id="indexPage" class="page active-page">
+        <div class="card">
+            <div class="card-title">🔍 填写今日考勤</div>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="输入学生姓名搜索" autocomplete="off">
+            </div>
+            <div id="studentListForDaily"></div>
+        </div>
+    </div>
+
+    <!-- 统计报表 -->
+    <div id="statisticsPage" class="page">
+        <div class="card">
+            <div class="card-title">📈 月度考勤统计（点击学生卡片下方按钮可修改记录）</div>
+            <div id="statsContainer"></div>
+        </div>
+    </div>
+
+    <!-- 班级管理 -->
+    <div id="managePage" class="page">
+        <div class="card">
+            <div class="card-title">📋 批量导入学生（每行一个姓名）</div>
+            <textarea id="batchNames" placeholder="例如：&#10;张三&#10;李四&#10;王芳" rows="4"></textarea>
+            <div class="batch-hint">💡 支持从Excel/Word中复制一列姓名，直接粘贴到这里</div>
+            <button id="batchAddBtn">➕ 批量添加学生</button>
+            <hr>
+            <div class="card-title" style="margin-top: 8px;">➕ 单独添加学生</div>
+            <input type="text" id="singleName" placeholder="学生姓名" autocomplete="off">
+            <button id="addSingleBtn">添加</button>
+            <hr>
+            <div class="card-title">💾 数据备份与恢复</div>
+            <div class="backup-buttons">
+                <button id="exportDataBtn">📤 导出数据（备份）</button>
+                <button id="importDataBtn" class="import-btn">📥 导入数据（恢复）</button>
+            </div>
+            <input type="file" id="importFileInput" accept=".json" style="display: none;">
+            <div class="batch-hint">⚠️ 导入会覆盖当前所有数据，建议先导出备份。</div>
+        </div>
+        <div class="card">
+            <div class="card-title">👩‍🎓 学生名单</div>
+            <div id="studentListForManage"></div>
+        </div>
+    </div>
+    <footer>数据保存在本机浏览器 | 支持导出/导入备份，防止丢失</footer>
+</div>
+
+<script>
+    // 存储key
+    const STORAGE_STUDENTS = 'attendance_students_v4';
+    const STORAGE_RECORDS = 'attendance_records_v4';
+
+    let students = [];
+    let records = [];
+
+    const typeList = ['late', 'absent', 'sickLeave', 'personalLeave', 'officialLeave'];
+    const typeDisplay = ['迟到', '缺勤', '病假', '事假', '公假'];
+
+    function getTodayStr() {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    function generateRecordId() {
+        return Date.now() + '-' + Math.random().toString(36).substr(2, 8);
+    }
+
+    function generateStudentId() {
+        return Date.now() + '-' + Math.random().toString(36).substr(2, 6);
+    }
+
+    function saveToLocal() {
+        localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(students));
+        localStorage.setItem(STORAGE_RECORDS, JSON.stringify(records));
+    }
+
+    function loadData() {
+        const storedStudents = localStorage.getItem(STORAGE_STUDENTS);
+        const storedRecords = localStorage.getItem(STORAGE_RECORDS);
+        if (storedStudents) {
+            try {
+                students = JSON.parse(storedStudents);
+            } catch(e) { students = []; }
+        } else {
+            students = []; // 不再自动生成演示数据，避免覆盖
+        }
+        if (storedRecords) {
+            try {
+                records = JSON.parse(storedRecords);
+            } catch(e) { records = []; }
+        } else {
+            records = [];
+        }
+        // 兼容旧数据：为没有 recordId 的记录补充id
+        let needSave = false;
+        records.forEach(rec => {
+            if (!rec.recordId) {
+                rec.recordId = generateRecordId();
+                needSave = true;
+            }
+        });
+        if (needSave) saveToLocal();
+    }
+
+    let currentTab = 'index';
+
+    function setCurrentTab(tabId) {
+        currentTab = tabId;
+        document.querySelectorAll('.tab').forEach(tab => {
+            if (tab.getAttribute('data-tab') === tabId) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
+            }
+        });
+        document.getElementById('indexPage').classList.toggle('active-page', tabId === 'index');
+        document.getElementById('statisticsPage').classList.toggle('active-page', tabId === 'statistics');
+        document.getElementById('managePage').classList.toggle('active-page', tabId === 'manage');
+        
+        if (tabId === 'index') renderDailyPage();
+        if (tabId === 'statistics') renderStatisticsPage();
+        if (tabId === 'manage') renderManagePage();
+    }
+
+    // 统计报表渲染（含管理按钮）
+    function renderStatisticsPage() {
+        const container = document.getElementById('statsContainer');
+        if (!container) return;
+        if (students.length === 0) {
+            container.innerHTML = '<div class="empty-msg">暂无学生数据，请先添加学生</div>';
+            return;
+        }
+        let html = '';
+        students.forEach(student => {
+            const studentRecords = records.filter(r => r.studentId === student.id);
+            const monthlyMap = new Map();
+            studentRecords.forEach(rec => {
+                const [year, month] = rec.date.split('-');
+                const monthKey = `${year}-${month}`;
+                if (!monthlyMap.has(monthKey)) {
+                    monthlyMap.set(monthKey, { late:0, absent:0, sickLeave:0, personalLeave:0, officialLeave:0 });
+                }
+                monthlyMap.get(monthKey)[rec.type]++;
+            });
+            const sortedMonths = Array.from(monthlyMap.keys()).sort().reverse();
+            html += `<div class="stat-card" data-student-id="${student.id}">`;
+            html += `<div class="student-name">${escapeHtml(student.name)}</div>`;
+            if (sortedMonths.length === 0) {
+                html += `<div style="color: #94a3b8; margin: 8px 0;">暂无考勤记录</div>`;
+            } else {
+                sortedMonths.forEach(monthKey => {
+                    const stats = monthlyMap.get(monthKey);
+                    html += `
+                        <div class="month-title">📅 ${monthKey}</div>
+                        <div class="stat-row">
+                            <span class="stat-badge">迟到 ${stats.late}次</span>
+                            <span class="stat-badge">缺勤 ${stats.absent}次</span>
+                            <span class="stat-badge">病假 ${stats.sickLeave}次</span>
+                            <span class="stat-badge">事假 ${stats.personalLeave}次</span>
+                            <span class="stat-badge">公假 ${stats.officialLeave}次</span>
+                        </div>
+                    `;
+                });
+            }
+            html += `<div style="margin-top: 16px; text-align: right;"><button class="small-btn manage-records-btn" data-student-id="${student.id}" data-student-name="${escapeHtml(student.name)}">📝 管理考勤记录</button></div>`;
+            html += `</div>`;
+        });
+        container.innerHTML = html;
+        document.querySelectorAll('.manage-records-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const studentId = btn.getAttribute('data-student-id');
+                const studentName = btn.getAttribute('data-student-name');
+                openRecordManager(studentId, studentName);
+            });
+        });
+    }
+
+    // 打开记录管理模态框（同前，略简化但保留完整功能）
+    function openRecordManager(studentId, studentName) {
+        let studentRecords = records.filter(r => r.studentId === studentId).sort((a,b) => b.date.localeCompare(a.date));
+        const modalDiv = document.createElement('div');
+        modalDiv.className = 'modal-mask';
+        modalDiv.innerHTML = `
+            <div class="modal-container">
+                <div class="modal-header">
+                    <span>📋 管理 ${escapeHtml(studentName)} 的考勤记录</span>
+                    <button class="close-btn">&times;</button>
+                </div>
+                <div id="recordsList"></div>
+                <div class="add-record-form">
+                    <div style="font-weight: bold; margin: 12px 0 6px 0;">➕ 补录新记录</div>
+                    <input type="date" id="newRecordDate" value="${getTodayStr()}">
+                    <select id="newRecordType">
+                        ${typeList.map((t,idx) => `<option value="${t}">${typeDisplay[idx]}</option>`).join('')}
+                    </select>
+                    <button id="addRecordBtn">添加记录</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalDiv);
+        const closeModal = () => modalDiv.remove();
+        modalDiv.querySelector('.close-btn').addEventListener('click', closeModal);
+        modalDiv.addEventListener('click', (e) => { if (e.target === modalDiv) closeModal(); });
+
+        function refreshRecordsList() {
+            const container = modalDiv.querySelector('#recordsList');
+            const updatedRecords = records.filter(r => r.studentId === studentId).sort((a,b) => b.date.localeCompare(a.date));
+            if (updatedRecords.length === 0) {
+                container.innerHTML = '<div class="empty-msg">暂无记录，请添加</div>';
+                return;
+            }
+            let html = '';
+            updatedRecords.forEach(rec => {
+                html += `
+                    <div class="record-item" data-record-id="${rec.recordId}">
+                        <div class="record-info">
+                            <span><strong>${rec.date}</strong>  ${typeDisplay[typeList.indexOf(rec.type)]}</span>
+                            <div class="record-actions">
+                                <button class="small-btn edit-record" data-id="${rec.recordId}">编辑</button>
+                                <button class="small-btn secondary delete-record" data-id="${rec.recordId}">删除</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+            container.querySelectorAll('.edit-record').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const recordId = btn.getAttribute('data-id');
+                    openEditModal(recordId, studentName, closeModal);
+                });
+            });
+            container.querySelectorAll('.delete-record').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const recordId = btn.getAttribute('data-id');
+                    if (confirm('确定删除此记录吗？')) {
+                        records = records.filter(r => r.recordId !== recordId);
+                        saveToLocal();
+                        refreshRecordsList();
+                        renderStatisticsPage();
+                        renderDailyPage();
+                    }
+                });
+            });
+        }
+        refreshRecordsList();
+
+        const addBtn = modalDiv.querySelector('#addRecordBtn');
+        addBtn.addEventListener('click', () => {
+            const newDate = modalDiv.querySelector('#newRecordDate').value;
+            const newType = modalDiv.querySelector('#newRecordType').value;
+            if (!newDate) {
+                alert('请选择日期');
+                return;
+            }
+            records.push({
+                recordId: generateRecordId(),
+                studentId: studentId,
+                date: newDate,
+                type: newType
+            });
+            saveToLocal();
+            refreshRecordsList();
+            renderStatisticsPage();
+            renderDailyPage();
+        });
+    }
+
+    function openEditModal(recordId, studentName, onCloseParentModal) {
+        const record = records.find(r => r.recordId === recordId);
+        if (!record) return;
+        const editDiv = document.createElement('div');
+        editDiv.className = 'modal-mask';
+        editDiv.innerHTML = `
+            <div class="modal-container" style="max-width: 400px;">
+                <div class="modal-header">
+                    <span>✏️ 编辑记录</span>
+                    <button class="close-btn">&times;</button>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label>学生：${escapeHtml(studentName)}</label>
+                </div>
+                <input type="date" id="editDate" value="${record.date}">
+                <select id="editType">
+                    ${typeList.map((t,idx) => `<option value="${t}" ${record.type === t ? 'selected' : ''}>${typeDisplay[idx]}</option>`).join('')}
+                </select>
+                <button id="saveEditBtn">保存修改</button>
+            </div>
+        `;
+        document.body.appendChild(editDiv);
+        const closeEdit = () => editDiv.remove();
+        editDiv.querySelector('.close-btn').addEventListener('click', closeEdit);
+        editDiv.addEventListener('click', (e) => { if (e.target === editDiv) closeEdit(); });
+        const saveBtn = editDiv.querySelector('#saveEditBtn');
+        saveBtn.addEventListener('click', () => {
+            const newDate = editDiv.querySelector('#editDate').value;
+            const newType = editDiv.querySelector('#editType').value;
+            if (!newDate) {
+                alert('日期不能为空');
+                return;
+            }
+            record.date = newDate;
+            record.type = newType;
+            saveToLocal();
+            closeEdit();
+            if (onCloseParentModal) {
+                const allModals = document.querySelectorAll('.modal-mask');
+                allModals.forEach(m => m.remove());
+                openRecordManager(record.studentId, studentName);
+            } else {
+                renderStatisticsPage();
+                renderDailyPage();
+            }
+        });
+    }
+
+    // 每日登记
+    function renderDailyPage() {
+        const searchValue = document.getElementById('searchInput')?.value.trim().toLowerCase() || '';
+        let filteredStudents = [...students];
+        if (searchValue) {
+            filteredStudents = students.filter(s => s.name.toLowerCase().includes(searchValue));
+        }
+        const container = document.getElementById('studentListForDaily');
+        if (!container) return;
+        if (filteredStudents.length === 0) {
+            container.innerHTML = '<div class="empty-msg">📭 没有找到学生，请到班级管理添加</div>';
+            return;
+        }
+        let html = '';
+        filteredStudents.forEach(student => {
+            const selectId = `type_select_${student.id}`;
+            html += `
+                <div class="student-item" style="flex-direction:column; align-items:stretch; border-bottom: 1px solid #e9ecef; padding: 16px 0;">
+                    <div style="margin-bottom: 12px;">
+                        <div class="student-name">${escapeHtml(student.name)}</div>
+                    </div>
+                    <div class="inline-picker">
+                        <select id="${selectId}">
+                            ${typeList.map((t, idx) => `<option value="${t}">${typeDisplay[idx]}</option>`).join('')}
+                        </select>
+                        <button class="small-btn" data-studentid="${student.id}" data-selectid="${selectId}">📌 提交今日记录</button>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+        container.querySelectorAll('button[data-studentid]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const studentId = btn.getAttribute('data-studentid');
+                const selectId = btn.getAttribute('data-selectid');
+                const selectEl = document.getElementById(selectId);
+                const selectedType = selectEl ? selectEl.value : 'late';
+                const today = getTodayStr();
+                records.push({
+                    recordId: generateRecordId(),
+                    studentId: studentId,
+                    date: today,
+                    type: selectedType
+                });
+                saveToLocal();
+                renderDailyPage();
+                if (currentTab === 'statistics') renderStatisticsPage();
+                showToast('✅ 登记成功');
+            });
+        });
+    }
+
+    // 班级管理渲染
+    function renderManagePage() {
+        const listDiv = document.getElementById('studentListForManage');
+        if (!listDiv) return;
+        if (students.length === 0) {
+            listDiv.innerHTML = '<div class="empty-msg">暂无学生，请使用上方批量导入或单独添加</div>';
+            return;
+        }
+        let html = '';
+        students.forEach(student => {
+            html += `
+                <div class="student-item">
+                    <div class="student-info">
+                        <div class="student-name">${escapeHtml(student.name)}</div>
+                    </div>
+                    <button class="small-btn secondary" data-id="${student.id}" data-name="${escapeHtml(student.name)}">删除</button>
+                </div>
+            `;
+        });
+        listDiv.innerHTML = html;
+        listDiv.querySelectorAll('button[data-id]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = btn.getAttribute('data-id');
+                const name = btn.getAttribute('data-name');
+                if (confirm(`确定删除学生“${name}”吗？该生的所有考勤记录也会被删除。`)) {
+                    students = students.filter(s => s.id !== id);
+                    records = records.filter(r => r.studentId !== id);
+                    saveToLocal();
+                    renderManagePage();
+                    if (currentTab === 'index') renderDailyPage();
+                    if (currentTab === 'statistics') renderStatisticsPage();
+                    showToast('已删除');
+                }
+            });
+        });
+    }
+
+    // 批量添加
+    function batchAddStudents(namesText) {
+        const lines = namesText.split(/\r?\n/);
+        let addedCount = 0;
+        let duplicateCount = 0;
+        for (let line of lines) {
+            let name = line.trim();
+            if (name === '') continue;
+            if (students.some(s => s.name === name)) {
+                duplicateCount++;
+                continue;
+            }
+            students.push({ id: generateStudentId(), name: name });
+            addedCount++;
+        }
+        if (addedCount > 0) {
+            saveToLocal();
+            showToast(`成功添加 ${addedCount} 名学生` + (duplicateCount > 0 ? `，跳过 ${duplicateCount} 个重复姓名` : ''));
+            renderManagePage();
+            if (currentTab === 'index') renderDailyPage();
+            if (currentTab === 'statistics') renderStatisticsPage();
+        } else {
+            showToast(duplicateCount > 0 ? '所有姓名均已存在' : '请输入至少一个姓名');
+        }
+    }
+
+    function addSingleStudent(name) {
+        if (!name.trim()) {
+            showToast('请输入学生姓名');
+            return;
+        }
+        if (students.some(s => s.name === name.trim())) {
+            showToast('该学生已存在');
+            return;
+        }
+        students.push({ id: generateStudentId(), name: name.trim() });
+        saveToLocal();
+        showToast(`添加成功：${name}`);
+        renderManagePage();
+        if (currentTab === 'index') renderDailyPage();
+        if (currentTab === 'statistics') renderStatisticsPage();
+        document.getElementById('singleName').value = '';
+    }
+
+    // 导出数据
+    function exportData() {
+        const data = {
+            students: students,
+            records: records,
+            version: '4'
+        };
+        const jsonStr = JSON.stringify(data, null, 2);
+        const blob = new Blob([jsonStr], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `attendance_backup_${getTodayStr()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('导出成功，文件已保存');
+    }
+
+    // 导入数据
+    function importData(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (data.students && Array.isArray(data.students)) {
+                    students = data.students;
+                } else {
+                    throw new Error('无效的学生数据');
+                }
+                if (data.records && Array.isArray(data.records)) {
+                    records = data.records;
+                    // 确保每条记录有recordId
+                    records.forEach(rec => {
+                        if (!rec.recordId) rec.recordId = generateRecordId();
+                    });
+                } else {
+                    records = [];
+                }
+                saveToLocal();
+                // 刷新所有页面
+                renderManagePage();
+                renderDailyPage();
+                renderStatisticsPage();
+                showToast('导入成功，数据已恢复');
+            } catch (err) {
+                alert('文件解析失败，请确保选择正确的备份文件（.json）');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function showToast(msg) {
+        let toast = document.createElement('div');
+        toast.innerText = msg;
+        toast.style.position = 'fixed';
+        toast.style.bottom = '80px';
+        toast.style.left = '50%';
+        toast.style.transform = 'translateX(-50%)';
+        toast.style.backgroundColor = 'rgba(0,0,0,0.7)';
+        toast.style.color = 'white';
+        toast.style.padding = '8px 20px';
+        toast.style.borderRadius = '40px';
+        toast.style.fontSize = '14px';
+        toast.style.zIndex = '999';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2000);
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    function bindEvents() {
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.getAttribute('data-tab');
+                setCurrentTab(tabId);
+            });
+        });
+        document.getElementById('batchAddBtn').addEventListener('click', () => {
+            const namesText = document.getElementById('batchNames').value;
+            if (!namesText.trim()) {
+                showToast('请在文本框内粘贴学生姓名（每行一个）');
+                return;
+            }
+            batchAddStudents(namesText);
+            document.getElementById('batchNames').value = '';
+        });
+        document.getElementById('addSingleBtn').addEventListener('click', () => {
+            const name = document.getElementById('singleName').value;
+            addSingleStudent(name);
+        });
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', () => {
+                if (currentTab === 'index') renderDailyPage();
+            });
+        }
+        // 导出导入按钮
+        document.getElementById('exportDataBtn').addEventListener('click', exportData);
+        const importBtn = document.getElementById('importDataBtn');
+        const fileInput = document.getElementById('importFileInput');
+        importBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                importData(e.target.files[0]);
+                fileInput.value = ''; // 清空，允许重复导入同一文件
+            }
+        });
+    }
+
+    function init() {
+        loadData();
+        bindEvents();
+        setCurrentTab('index');
+    }
+    init();
+</script>
+</body>
+</html>
